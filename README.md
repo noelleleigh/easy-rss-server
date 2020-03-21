@@ -1,27 +1,53 @@
-Welcome to Glitch
-=================
+# easy-rss-server
 
-Click `Show` in the header to see your app live. Updates to your code will instantly deploy and update live.
+Easily host static files from an RSS feed! Just upload them, and they're instantly available for download from an RSS feed that you can subscribe to in your podcast app.
 
-**Glitch** is the friendly community where you'll build the app of your dreams. Glitch lets you instantly create, remix, edit, and host an app, bot or site, and you can invite collaborators or helpers to simultaneously edit code with you.
+## Setup
 
-Find out more [about Glitch](https://glitch.com/about).
+### Easy way
 
+Remix on Glitch!
 
-Your Project
-------------
+[![Remix on Glitch](https://cdn.glitch.com/2703baf2-b643-4da7-ab91-7ee2a2d00b5b%2Fremix-button.svg)](https://glitch.com/edit/#!/remix/easy-rss-server)
 
-On the front-end,
-- edit `public/client.js`, `public/style.css` and `views/index.html`
-- drag in `assets`, like images or music, to add them to your project
+### Manual way
 
-On the back-end,
-- your app starts at `server.js`
-- add frameworks and packages in `package.json`
-- safely store app secrets in `.env` (nobody can see this but you and people you invite)
+If you want to run the server locally, you can install it from GitHub:
 
+1. Clone the repository:
 
-Made by [Glitch](https://glitch.com/)
--------------------
+    ```bash
+    git clone https://github.com/noelleleigh/easy-rss-server.git
+    ```
 
-\ ゜o゜)ノ
+2. Navigate to the folder:
+
+    ```bash
+    cd ./easy-rss-server
+    ```
+
+3. Install the dependencies:
+
+    ```bash
+    npm install
+    ```
+
+4. Run the server
+
+    ```bash
+    $ node .\server.js
+    Your app is listening on port 54775
+    ```
+
+## Usage
+
+You can configure the app using a `.env` file. Here's a sample one with the defaults in place:
+
+```ini
+# The network port you want the server to run on locally
+PORT=8080
+# The path you want to serve the feed from, e.g. www.example.com/feed
+FEED_URL_path=feed
+# The file system directory the files should be stored in
+DATA_DIR=./.data
+```
