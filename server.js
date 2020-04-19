@@ -1,117 +1,156 @@
-// server.js
-// where your node app starts
-
-// init project
-const fs = require("fs");
-const url = require("url");
+require("dotenv").config();
+const fsPromises = require("fs").promises;
 const path = require("path");
+
 const express = require("express");
-const app = express();
+const mime = require("mime");
 const RSS = require("rss");
 
-app.use(express.static("public"));
-app.set("json spaces", "  ");
+const escape = require("./escape");
 
-// Return an array of asset objects for files that haven't been deleted
-const parseGlitchAssets = async () => {
-  const handle = await fs.promises.open(".glitch-assets");
-  const contents = await handle.readFile({ encoding: "utf8" });
-  const lines = contents.split("\n").filter(line => line.length);
-  const records = lines.map(line => {
-    try {
-      return JSON.parse(line);
-    } catch (err) {
-      console.error(err);
-      return {};
-    }
-  });
-  const assets = new Map();
-  // Iterate through the records to obtain the current set of assets
-  for (const record of records) {
-    if (record.deleted) {
-      assets.delete(record.uuid);
-    } else {
-      assets.set(record.uuid, record);
-    }
-  }
-  await handle.close();
-  return assets;
+const app = express();
+app.set("json spaces", 2);
+
+const STATIC_PATH = "/data";
+const DATA_DIR = path.join(__dirname, ".data");
+app.use(STATIC_PATH, express.static(DATA_DIR));
+
+const makeStaticURL = (fileName) => {
+  return path.posix.join(STATIC_PATH, encodeURIComponent(fileName));
 };
 
-// Make a feed item out of an asset.
-const assetToFeedItem = asset => {
-  const title = path.parse(asset.name).name
-  return {
-    title: title,
-    description: `A file named ${title}`,
-    url: asset.url,
-    guid: asset.uuid,
-    date: asset.date,
-    enclosure: {
-      url: asset.url,
-      size: asset.size,
-      type: asset.type
-    },
-    custom_elements: [
-      {
-        "itunes:image": {
-          _attr: {
-            href: asset.thumbnail
-          }
-        }
-      }
-    ]
-  };
-};
-
-// Show the items in JSON format
-app.get("/", async function(request, response) {
-  parseGlitchAssets()
-    .then(assets => {
-      const responseArray = [...assets.values()].map(assetToFeedItem)
-      response.json(responseArray)
+const getFileDetails = async () => {
+  const fileNames = await fsPromises.readdir(DATA_DIR);
+  const fileObjects = await Promise.all(
+    fileNames.map(async (name) => {
+      const filePath = path.join(DATA_DIR, name);
+      const handle = await fsPromises.open(filePath);
+      const stats = await handle.stat();
+      await handle.close();
+      return {
+        id: stats.ino,
+        name: name,
+        url: makeStaticURL(name),
+        size_in_bytes: stats.size,
+        mime_type: mime.getType(name),
+        date_published: new Date(stats.mtimeMs),
+      };
     })
-    .catch(err => {
-      console.error(err);
-      response.status(500).send(err);
-    });
-});
-
-const makeURL = (req, pathname = req.path) => {
-  return url.format({
-    protocol: req.protocol,
-    hostname: req.hostname,
-    pathname: pathname
-  });
+  );
+  return fileObjects.sort(
+    (a, b) => b.date_published.getTime() - a.date_published.getTime()
+  );
 };
 
-const makeFeed = async request => {
-  const feed = new RSS({
-    title: "Noelle's Goodies",
-    feed_url: makeURL(request),
-    site_url: makeURL(request, ""),
-    custom_namespaces: {
-      itunes: "http://www.itunes.com/dtds/podcast-1.0.dtd"
-    }
-  });
+const makeJsonFeed = (title, feedUrl, homePageUrl, description, items) => {
+  const feed = {
+    version: "https://jsonfeed.org/version/1",
+    title: title,
+    feed_url: feedUrl,
+    home_page_url: homePageUrl,
+    description: description,
+    items: items.map((item) => {
+      const itemUrl = new URL(item.url, homePageUrl);
+      return {
+        id: item.id,
+        url: itemUrl,
+        title: item.name,
+        content_text: `A file named ${item.name}.`,
+        date_published: item.date_published,
+        attachments: [
+          {
+            url: itemUrl,
+            mime_type: item.mime_type,
+            title: item.name,
+            size_in_bytes: item.size_in_bytes,
+          },
+        ],
+      };
+    }),
+  };
+  return feed;
+};
 
-  const assets = await parseGlitchAssets();
-  for (const asset of assets.values()) {
-    feed.item(assetToFeedItem(asset));
+const makeRssFeed = (title, feedUrl, siteUrl, description, items) => {
+  const feed = new RSS({
+    title: title,
+    feed_url: feedUrl,
+    site_url: siteUrl,
+    description: description,
+    custom_namespaces: {
+      itunes: "http://www.itunes.com/dtds/podcast-1.0.dtd",
+    },
+  });
+  for (const item of items) {
+    const itemUrl = new URL(item.url, homePageUrl);
+    feed.item({
+      title: item.name,
+      description: `A file named ${item.name}.`,
+      url: itemUrl,
+      guid: item.id,
+      date: item.date_published,
+      enclosure: {
+        url: itemUrl,
+        size: item.size_in_bytes,
+        type: item.mime_type,
+      },
+    });
   }
   return feed;
 };
 
-app.get("/feed", async function(request, response) {
-  makeFeed(request)
-    .then(feed => response.type("application/rss+xml").send(feed.xml("  ")))
-    .catch(err => {
-      console.error(err);
-      response.status(500).send(err);
-    });
+app.get("/", async (request, response) => {
+  // List the files in .data
+  const fileObjects = await getFileDetails();
+  const listElements = fileObjects.map(
+    (file) =>
+      `<li><a href="${file.url}">${escape(
+        file.name
+      )}</a> (${file.date_published.toISOString()})</li>`
+  );
+  response.send(`<ul>${listElements.join("\n")}</ul>`);
 });
 
-// listen for requests :)
-const listener = app.listen(process.env.PORT, function() {
+app.get("/json", async (request, response) => {
+  try {
+    const fileObjects = await getFileDetails();
+    const host = `${request.protocol}://${request.headers.host}`;
+    const feed = makeJsonFeed(
+      "My cool stuff",
+      `${host}/json`,
+      host,
+      "My cool feed",
+      fileObjects
+    );
+    response.json(feed);
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error.message);
+  }
+});
+
+app.get("/rss", async (request, response) => {
+  try {
+    const fileObjects = await getFileDetails();
+    const host = `${request.protocol}://${request.headers.host}`;
+    const feed = makeRssFeed(
+      "My cool stuff",
+      `${host}/rss`,
+      host,
+      "My cool feed",
+      fileObjects
+    );
+    response.type("application/rss+xml").send(feed.xml("  "));
+  } catch (error) {
+    console.error(error);
+    response.status(500).send(error.message);
+  }
+});
+
+const IS_DEV = process.env.NODE_ENV === "development";
+const HOST = IS_DEV ? "localhost" : undefined;
+const PORT = IS_DEV ? process.env.PORT_DEV : process.env.PORT;
+
+const listener = app.listen(PORT, HOST, () => {
   console.log("Your app is listening on port " + listener.address().port);
 });
