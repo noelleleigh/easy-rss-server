@@ -1,16 +1,13 @@
 {
-  "//1": "describes your app and its dependencies",
-  "//2": "https://docs.npmjs.com/files/package.json",
-  "//3": "updating this file will download and update your packages",
-  "name": "hello-express",
+  "name": "easy-rss-server",
   "version": "0.0.1",
-  "description": "A simple Node app built on Express, instantly up and running.",
+  "description": "A simple way to share files via an RSS feed.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.17",
+    "express": "^4.17.1",
     "rss": "^1.2.2",
     "express-sslify": "^1.2.0"
   },
@@ -18,12 +15,14 @@
     "node": "^12"
   },
   "repository": {
-    "url": "https://glitch.com/edit/#!/hello-express"
+    "type": "git",
+    "url": "https://github.com/noelleleigh/easy-rss-server"
   },
   "license": "MIT",
   "keywords": [
-    "node",
-    "glitch",
-    "express"
+    "rss",
+    "audio",
+    "express",
+    "glitch"
   ]
 }
