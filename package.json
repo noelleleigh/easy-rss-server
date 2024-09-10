@@ -10,7 +10,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.19",
+    "express": "^4.20",
     "rss": "^1.2.2",
     "express-sslify": "^1.2.0"
   },
