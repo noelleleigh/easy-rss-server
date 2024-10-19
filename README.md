@@ -45,9 +45,5 @@ You can configure the app using a `.env` file. Here's a sample one with the defa
 
 ```ini
 # The network port you want the server to run on locally
-PORT=8080
-# The path you want to serve the feed from, e.g. www.example.com/feed
-FEED_URL_path=feed
-# The file system directory the files should be stored in
-DATA_DIR=./.data
+PORT=8000
 ```

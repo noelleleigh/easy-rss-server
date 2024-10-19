@@ -2,6 +2,8 @@
 // where your node app starts
 
 // init project
+require('dotenv').config()
+
 const fs = require("fs");
 const url = require("url");
 const path = require("path");
