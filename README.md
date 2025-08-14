@@ -1,3 +1,5 @@
+**Archived: [Moved to Sourcehut](https://git.sr.ht/~noelle/easy-rss-server)**
+
 # easy-rss-server
 
 Easily host static files from an RSS feed! Just upload them, and they're instantly available for download from an RSS feed that you can subscribe to in your podcast app.
